@@ -37,7 +37,7 @@ class Node():
         
 
 class Branch():
-    def __init__(self, uuid='', r=0.0, x=0.0, c=0.0, start_node=None, end_node=None,
+    def __init__(self, uuid='', r=0.0, x=0.0, bch=0.0, start_node=None, end_node=None,
                  base_voltage=1.0, base_apparent_power=1.0):
         self.uuid = uuid
         self.baseVoltage = base_voltage
@@ -48,7 +48,7 @@ class Branch():
         self.end_node = end_node
         self.r = r
         self.x = x
-        self.c = c
+        self.bch = bch
         self.z = self.r + 1j * self.x
         self.y = 1 / self.z if (self.z != 0) else float("inf")
         self.r_pu = r / self.base_impedance
@@ -218,7 +218,7 @@ class System():
             end_node = nodes[1]
 
             base_voltage = ACLineSegment.BaseVoltage.nominalVoltage
-            self.branches.append(Branch(uuid=uuid_ACLineSegment, r=ACLineSegment.r, x=ACLineSegment.x, c=ACLineSegment.bch,
+            self.branches.append(Branch(uuid=uuid_ACLineSegment, r=ACLineSegment.r, x=ACLineSegment.x, bch=ACLineSegment.bch,
                                         start_node=start_node, end_node=end_node, 
                                         base_voltage=base_voltage, base_apparent_power=base_apparent_power))
             
@@ -437,11 +437,11 @@ class System():
             x.append(branch.x)
         return x
 
-    def get_branch_C(self):
+    def get_branch_BCH(self):
         """
-        Return capacitance of all branches
+        Return charging susceptance of all branches
         """
-        capacitance = []
+        susceptance = []
         for branch in self.branches:
-            capacitance.append(branch.c)
-        return capacitance
+            susceptance.append(branch.bch)
+        return susceptance
