@@ -74,11 +74,11 @@ class MeasurementSet:
                     # volt pu conversion assuming that meas_data from device are in volts and single-phase value according to sogno interface
                     # while baseVoltage from CIM in [kV] and three-phase value
                     if not value_in_pu:
-                        meas_value_pu = meas_data / (meas.element.baseVoltage / np.sqrt(3) * 1000)
+                        meas_value_pu = meas_data / (meas.element.baseVoltage / np.sqrt(3) )
                         meas_value_act = meas_data
                     else:
                         meas_value_pu = meas_data
-                        meas_value_act = meas_data * (meas.element.baseVoltage / np.sqrt(3) * 1000)
+                        meas_value_act = meas_data * (meas.element.baseVoltage / np.sqrt(3) )
                     print("Updating measurement value for {} of type {} from {} to {}".format(meas.element.uuid, str(meas.meas_type), meas.meas_value, meas_value_pu))                    
                     meas.meas_value = meas_value_pu 
                     meas.meas_value_act = meas_value_act                
@@ -87,11 +87,11 @@ class MeasurementSet:
                     # current pu conversion assuming that meas_data from device are in A and single-phase value according to sogno interface
                     # while base_current in [kA]
                     if not value_in_pu:
-                        meas_value_pu = meas_data / (meas.element.base_current * 1000)
+                        meas_value_pu = meas_data / (meas.element.base_current )
                         meas_value_act = meas_data
                     else:
                         meas_value_pu = meas_data
-                        meas_value_act = meas_data * (meas.element.base_current * 1000)
+                        meas_value_act = meas_data * (meas.element.base_current )
                     print("Updating measurement value for {} of type {} from {} to {}".format(meas.element.uuid, str(meas.meas_type), meas.meas_value, meas_value_pu))
                     meas.meas_value = meas_value_pu
                     meas.meas_value_act = meas_value_act
@@ -100,11 +100,11 @@ class MeasurementSet:
                     # power pu conversion assuming that meas_data from device are in watts and single-phase value according to sogno interface
                     # while baseApparent power in [MW] and three-phase value
                     if not value_in_pu:    
-                        meas_value_pu = meas_data / (meas.element.base_apparent_power / 3 * 1e6)
+                        meas_value_pu = meas_data / (meas.element.base_apparent_power / 3 )
                         meas_value_act = meas_data
                     else:
                         meas_value_pu = meas_data
-                        meas_value_act = meas_data * (meas.element.base_apparent_power / 3 * 1e6)
+                        meas_value_act = meas_data * (meas.element.base_apparent_power / 3 )
                     print("Updating measurement value for {} of type {} from {} to {}".format(meas.element.uuid, str(meas.meas_type), meas.meas_value, meas_value_pu))
                     meas.meas_value = meas_value_pu
                     meas.meas_value_act = meas_value_act
@@ -252,11 +252,11 @@ class MeasurementSet:
         type_phase = [MeasType.Vpmu_phase, MeasType.Ipmu_phase, MeasType.Ipmu_inj_phase]
         for index, meas in enumerate(self.measurements):
                 if meas.meas_type in type_volt :
-                    meas.meas_value_act = meas.meas_value * (meas.element.baseVoltage / np.sqrt(3) * 1000)
+                    meas.meas_value_act = meas.meas_value * (meas.element.baseVoltage / np.sqrt(3))
                 elif meas.meas_type in type_curr:
-                    meas.meas_value_act = meas.meas_value * (meas.element.base_current * 1000)
+                    meas.meas_value_act = meas.meas_value * (meas.element.base_current )
                 elif meas.meas_type in type_power :
-                    meas.meas_value_act = meas.meas_value * (meas.element.base_apparent_power / 3 * 1e6) # TODO: Should be divided by 3 for single phase?
+                    meas.meas_value_act = meas.meas_value * (meas.element.base_apparent_power / 3 ) # TODO: Should be divided by 3 for single phase?
                 elif meas.meas_type in type_phase : 
                     meas.meas_value_act = meas.meas_value # unaffected by per-unit
 
@@ -435,25 +435,3 @@ class MeasurementSet:
         meas_set.measurements = meas_set_1.measurements + meas_set_2.measurements
         return meas_set
 
-    def update_existing_measurement(self, element_uuid, meas_data, dist="normal", seed=None, type="simulation",
-                                    ):
-        for meas in self.measurements:
-            if meas.element.uuid == element_uuid:
-                if type == "simulation":
-                    np.random.seed(seed)
-                    if dist == "normal":
-                        err_pu = np.random.normal(0, 0, 1)
-                        if meas.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                            zdev = meas_data * meas.std_dev
-                        elif meas.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                            zdev = meas.std_dev
-                            meas.meas_value = meas_data + zdev * err_pu[0]
-                    elif dist == "uniform":
-                        err_pu = np.random.uniform(-1, 1, 1)
-                        if meas.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                            zdev = (meas_data * meas.std_dev)
-                        elif meas.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                            zdev = meas.std_dev
-                        meas.meas_value = meas_data + np.multiply(3 * zdev, err_pu[0])
-                elif type == "field":
-                    meas.meas_value = meas_data
