@@ -160,7 +160,7 @@ class Results():
         for index in range(len(V)):
             node = self.get_node_by_index(index)
             node.voltage_pu = V[index]
-            node.voltage = node.voltage_pu * node.topology_node.baseVoltage
+            node.voltage = node.voltage_pu * node.topology_node.baseVoltage / np.sqrt(3) # base voltage from CIM in 3 phase values
     
     def calculate_all(self):
         """
@@ -206,7 +206,7 @@ class Results():
         """
         for node in self.nodes:
             node.power_pu = node.voltage_pu * np.conj(node.current_pu)
-            node.power = node.power_pu * node.topology_node.base_apparent_power
+            node.power = node.power_pu * node.topology_node.base_apparent_power / 3 # base apparant power in 3phase as per CIM
 
     def calculateS1(self):
         """
@@ -217,7 +217,7 @@ class Results():
             for node in self.nodes:
                 if branch_index == node.topology_node.index:
                     branch.power_pu = node.voltage_pu * (np.conj(branch.current_pu))
-                    branch.power = branch.power_pu * branch.topology_branch.base_apparent_power
+                    branch.power = branch.power_pu * branch.topology_branch.base_apparent_power / 3 # base apparant power in 3phase as per CIM
 
     def calculateS2(self):
         """
@@ -228,7 +228,7 @@ class Results():
             for node in self.nodes:
                 if branch_index == node.topology_node.index:
                     branch.power2_pu = -node.voltage_pu * (np.conj(branch.current_pu))
-                    branch.power2 = branch.power2_pu * branch.topology_branch.base_apparent_power
+                    branch.power2 = branch.power2_pu * branch.topology_branch.base_apparent_power / 3 # base apparant power in 3phase as per CIM
 
     def get_node(self, index=None, uuid=None):
         """
