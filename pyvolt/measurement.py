@@ -355,6 +355,32 @@ class MeasurementSet:
 
         return weights
 
+    def getCovarianceMatrix(self):
+        """
+        return an array the Measurement Covariance (obtained as standard_deviations^2)
+        """
+        cov = np.zeros(len(self.measurements))
+        for index, measurement in enumerate(self.measurements):
+            # the weight is small and can bring instability during matrix inversion, so we "cut" everything below 10^-6
+            if measurement.std_dev < 10 ** (-6):
+                measurement.std_dev = 10 ** (-6)
+            cov[index] = (measurement.std_dev) ** (2)
+
+        return cov
+
+    def getCovarianceMatrixActuals(self):
+        """
+        return an array the Measurement Covariance (obtained as standard_deviations^-2) in actuals
+        """
+        cov = np.zeros(len(self.measurements))
+        for index, measurement in enumerate(self.measurements):
+            # the weight is small and can bring instability during matrix inversion, so we "cut" everything below 10^-6
+            if measurement.std_dev_act < 10 ** (-6):
+                measurement.std_dev_act = 10 ** (-6)
+            cov[index] = (measurement.std_dev_act) ** (2)
+
+        return cov
+
     def getMeasValues(self):
         """
         returns an array with all measured values (affected by uncertainty)
