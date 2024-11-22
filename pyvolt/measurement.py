@@ -46,9 +46,11 @@ class Measurement:
         self.element_type = element_type
         self.meas_type = meas_type
         self.meas_value_ideal = meas_value_ideal
-        self.std_dev = unc / 300
-        self.meas_value = 0.0  # measured values (affected by uncertainty)
-        self.meas_value_act = 0.0 # measurement values in actuals (affected by uncertainty)
+        self.unc = unc                                          # uncertainty in percentage
+        self.std_dev = 0.0                                      # standard deviation of measurement in per unit (or true-value)
+        self.std_dev_act = 0.0                                  # standard deviation of measurement in actuals (or true-value)
+        self.meas_value = 0.0                                   # measured values (affected by uncertainty)
+        self.meas_value_act = 0.0                               # measurement values in actuals (affected by uncertainty)
 
 
 class MeasurementSet:
@@ -229,23 +231,36 @@ class MeasurementSet:
             if dist == "normal":
                 err_pu = np.random.normal(0, 0, len(self.measurements))
                 for index, measurement in enumerate(self.measurements):
-                    if measurement.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                        zdev = measurement.meas_value_ideal * measurement.std_dev
-                    elif measurement.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                        zdev = measurement.std_dev
-                    measurement.meas_value = measurement.meas_value_ideal + zdev * err_pu[index]
+                    if measurement.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
+                        zdev_ideal = abs(measurement.meas_value_ideal * measurement.unc)/300
+                        measurement.meas_value = measurement.meas_value_ideal + zdev_ideal * err_pu[index]
+                        measurement.std_dev = abs(measurement.meas_value * measurement.unc)/300
+                    elif measurement.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
+                        zdev_ideal = measurement.unc/3
+                        measurement.meas_value = measurement.meas_value_ideal + zdev_ideal * err_pu[index]
+                        measurement.std_dev = zdev_ideal # phase angle uncertainty is not relative
+                    
             elif dist == "uniform":
                 err_pu = np.random.uniform(-1, 1, len(self.measurements))
                 for index, measurement in enumerate(self.measurements):
-                    if measurement.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                        zdev = (measurement.meas_value_ideal * measurement.std_dev)
-                    elif measurement.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase]:
-                        zdev = measurement.std_dev
-                    measurement.meas_value = measurement.meas_value_ideal + np.multiply(3 * zdev, err_pu[index])
+                    if measurement.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
+                        zdev_ideal = abs(measurement.meas_value_ideal * measurement.unc)/300
+                        measurement.meas_value = measurement.meas_value_ideal + np.multiply(3 * zdev_ideal, err_pu[index])
+                        measurement.std_dev = abs(measurement.meas_value * measurement.unc)/300
+                    elif measurement.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
+                        zdev_ideal = measurement.unc/3
+                        measurement.meas_value = measurement.meas_value_ideal + np.multiply(3 * zdev_ideal, err_pu[index])
+                        measurement.std_dev = zdev_ideal
+                   
         elif type == "field":
             for measurement in self.measurements:
                 measurement.meas_value = measurement.meas_value_ideal
+                if measurement.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
+                    measurement.std_dev = abs(measurement.meas_value * measurement.unc)/300
+                elif measurement.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
+                    measurement.std_dev = measurement.unc/3
 
+        # converting to actuals
         type_volt = [MeasType.Vpmu_mag, MeasType.V_mag]
         type_curr = [MeasType.Ipmu_mag, MeasType.I_mag, MeasType.Ipmu_inj_mag]
         type_power = [MeasType.S1_imag, MeasType.S1_real, MeasType.S2_imag, MeasType.S2_real, MeasType.Sinj_imag, MeasType.Sinj_real]
@@ -253,12 +268,16 @@ class MeasurementSet:
         for index, meas in enumerate(self.measurements):
                 if meas.meas_type in type_volt :
                     meas.meas_value_act = meas.meas_value * (meas.element.baseVoltage / np.sqrt(3))
+                    meas.std_dev_act = meas.std_dev * (meas.element.baseVoltage / np.sqrt(3))
                 elif meas.meas_type in type_curr:
                     meas.meas_value_act = meas.meas_value * (meas.element.base_current )
+                    meas.std_dev_act = meas.std_dev * (meas.element.base_current )
                 elif meas.meas_type in type_power :
                     meas.meas_value_act = meas.meas_value * (meas.element.base_apparent_power / 3 ) # TODO: Should be divided by 3 for single phase?
+                    meas.std_dev_act = meas.std_dev * (meas.element.base_apparent_power / 3 )
                 elif meas.meas_type in type_phase : 
                     meas.meas_value_act = meas.meas_value # unaffected by per-unit
+                    meas.std_dev_act = meas.std_dev
 
     def meas_creation_test(self, err_pu):
         """
@@ -320,6 +339,19 @@ class MeasurementSet:
             if measurement.std_dev < 10 ** (-6):
                 measurement.std_dev = 10 ** (-6)
             weights[index] = (measurement.std_dev) ** (-2)
+
+        return weights
+
+    def getWeightsMatrixActuals(self):
+        """
+        return an array the weights (obtained as standard_deviations^-2) in actuals
+        """
+        weights = np.zeros(len(self.measurements))
+        for index, measurement in enumerate(self.measurements):
+            # the weight is small and can bring instability during matrix inversion, so we "cut" everything below 10^-6
+            if measurement.std_dev_act < 10 ** (-6):
+                measurement.std_dev_act = 10 ** (-6)
+            weights[index] = (measurement.std_dev_act) ** (-2)
 
         return weights
 
