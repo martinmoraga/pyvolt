@@ -423,6 +423,49 @@ class MeasurementSet:
             meas_real[ipmu_inj_phase_index] = iamp * np.sin(itheta)
 
         return meas_real
+
+    def getMeasValuesActuals(self):
+        """
+        returns an array with all measured values (affected by uncertainty)
+        """
+        meas_real = np.zeros(len(self.measurements))
+        for index, measurement in enumerate(self.measurements):
+            meas_real[index] = measurement.meas_value_act
+
+        """ Replace in meas_real amplitude and phase of Vpmu by real and imaginary part """
+        # get all measurements of type MeasType.Vpmu_mag
+        Vpmu_mag_idx = self.getIndexOfMeasurements(type=MeasType.Vpmu_mag)
+        # get all measurements of type MeasType.Vpmu_phase
+        Vpmu_phase_idx = self.getIndexOfMeasurements(type=MeasType.Vpmu_phase)
+        for vpmu_mag_index, vpmu_phase_index in zip(Vpmu_mag_idx, Vpmu_phase_idx):
+            vamp = self.measurements[vpmu_mag_index].meas_value_act
+            vtheta = self.measurements[vpmu_phase_index].meas_value_act
+            meas_real[vpmu_mag_index] = vamp * np.cos(vtheta)
+            meas_real[vpmu_phase_index] = vamp * np.sin(vtheta)
+
+        """ Replace in z amplitude and phase of Ipmu by real and imaginary part """
+        # get all measurements of type MeasType.Ipmu_mag
+        Ipmu_mag_idx = self.getIndexOfMeasurements(type=MeasType.Ipmu_mag)
+        # get all measurements of type MeasType.Ipmu_phase
+        Ipmu_phase_idx = self.getIndexOfMeasurements(type=MeasType.Ipmu_phase)
+        for ipmu_mag_index, ipmu_phase_index in zip(Ipmu_mag_idx, Ipmu_phase_idx):
+            iamp = self.measurements[ipmu_mag_index].meas_value_act
+            itheta = self.measurements[ipmu_phase_index].meas_value_act
+            meas_real[ipmu_mag_index] = iamp * np.cos(itheta)
+            meas_real[ipmu_phase_index] = iamp * np.sin(itheta)
+
+        """ Replace in z amplitude and phase of Ipmu_inj by real and imaginary part """
+        # get all measurements of type MeasType.Ipmu_mag
+        Ipmu_inj_mag_idx = self.getIndexOfMeasurements(type=MeasType.Ipmu_inj_mag)
+        # get all measurements of type MeasType.Ipmu_phase
+        Ipmu_inj_phase_idx = self.getIndexOfMeasurements(type=MeasType.Ipmu_inj_phase)
+        for ipmu_inj_mag_index, ipmu_inj_phase_index in zip(Ipmu_inj_mag_idx, Ipmu_inj_phase_idx):
+            iamp = self.measurements[ipmu_inj_mag_index].meas_value_act
+            itheta = self.measurements[ipmu_inj_phase_index].meas_value_act
+            meas_real[ipmu_inj_mag_index] = iamp * np.cos(itheta)
+            meas_real[ipmu_inj_phase_index] = iamp * np.sin(itheta)
+
+        return meas_real
     
     def getSortedMeasurementSet(self):
         """
