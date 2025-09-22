@@ -229,15 +229,14 @@ class MeasurementSet:
         if type == "simulation":
             np.random.seed(seed)
             if dist == "normal":
-                err_pu = np.random.normal(0, 0, len(self.measurements))
                 for index, measurement in enumerate(self.measurements):
                     if measurement.meas_type not in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
                         zdev_ideal = abs(measurement.meas_value_ideal * measurement.unc)/300
-                        measurement.meas_value = measurement.meas_value_ideal + zdev_ideal * err_pu[index]
+                        measurement.meas_value = measurement.meas_value_ideal + np.random.normal(0, zdev_ideal) 
                         measurement.std_dev = abs(measurement.meas_value * measurement.unc)/300
                     elif measurement.meas_type in [MeasType.Ipmu_phase, MeasType.Vpmu_phase, MeasType.Ipmu_inj_phase]:
                         zdev_ideal = measurement.unc/3
-                        measurement.meas_value = measurement.meas_value_ideal + zdev_ideal * err_pu[index]
+                        measurement.meas_value = measurement.meas_value_ideal + np.random.normal(0, zdev_ideal)
                         measurement.std_dev = zdev_ideal # phase angle uncertainty is not relative
                     
             elif dist == "uniform":
